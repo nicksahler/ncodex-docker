@@ -7,10 +7,11 @@ services:
       - 8182:8182
     user: root
     volumes:
-      - /mnt/volume_nyc1_01/cantaloupe/data:/imageroot
+      - ${CANTALOUPE_DATA_DIR}:/imageroot
       - ./cantaloupe/cantaloupe.properties:/cantaloupe/cantaloupe.properties
     environment:
       ENDPOINT_ADMIN_SECRET: "${CANTALOUPE_SECRET}"
+    restart: always
   nginx:
     container_name: nginx
     image: nginx
@@ -21,6 +22,19 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - /mnt/volume_nyc1_01/postgresql/data:/var/lib/postgresql/data
+      - ${POSTGRES_DATA_DIR}:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  pgadmin4:
+    container_name: pgadmin4
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    volumes:
+       - pgadmin:/root/.pgadmin
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    networks:
+      - postgres
+    restart: unless-stopped
