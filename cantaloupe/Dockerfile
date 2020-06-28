@@ -8,11 +8,11 @@ EXPOSE 8182
 VOLUME /imageroot
 
 COPY libjpeg-turbo/lib64 /opt/libjpeg-turbo/lib
-COPY ./scripts .
+COPY scripts /scripts
 # Update packages and install tools
-RUN ./scripts/install-dependencies.sh && \
+RUN /scripts/install-dependencies.sh && \
     adduser --system cantaloupe && \
-    ./scripts/install-cantaloupe.sh
+    /scripts/install-cantaloupe.sh
 
 USER cantaloupe
 CMD ["sh", "-c", "java -Dcantaloupe.config=/cantaloupe/cantaloupe.properties -jar /cantaloupe/cantaloupe-$CANTALOUPE_VERSION.war"]
