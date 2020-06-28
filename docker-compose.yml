@@ -25,6 +25,8 @@ services:
       - ${POSTGRES_DATA_DIR}:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - postgres
   pgadmin4:
     container_name: pgadmin4
     image: dpage/pgadmin4
@@ -38,3 +40,6 @@ services:
     networks:
       - postgres
     restart: unless-stopped
+networks:
+  postgres:
+    driver: bridge
