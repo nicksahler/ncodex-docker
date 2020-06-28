@@ -10,7 +10,8 @@ VOLUME /imageroot
 COPY libjpeg-turbo/lib64 /opt/libjpeg-turbo/lib
 COPY scripts /scripts
 # Update packages and install tools
-RUN /scripts/install-dependencies.sh && \
+RUN chmod -R +x /scripts && \
+    /scripts/install-dependencies.sh && \
     adduser --system cantaloupe && \
     /scripts/install-cantaloupe.sh
 
