@@ -32,7 +32,7 @@ services:
     image: dpage/pgadmin4
     restart: unless-stopped
     depends_on:
-      - postgres
+      - postgresql
     networks:
       - postgres
     ports:
@@ -47,7 +47,7 @@ services:
     image: hasura/graphql-engine:v1.2.2
     restart: always
     depends_on:
-      - postgres
+      - postgresql
     networks:
       - postgres
     ports:
@@ -57,7 +57,7 @@ services:
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
       HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
       ## uncomment next line to set an admin secret
-      HASURA_GRAPHQL_ADMIN_SECRET: myadminsecretkey
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET}
 networks:
   postgres:
     driver: bridge
