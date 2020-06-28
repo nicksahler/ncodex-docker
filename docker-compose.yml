@@ -18,7 +18,7 @@ services:
     container_name: postgresql
     image: postgres:10
     restart: always
-    expose:
+    ports:
       - 5432:5432
     volumes:
       - /mnt/volume_nyc1_01/postgresql/data:/var/lib/postgresql/data
