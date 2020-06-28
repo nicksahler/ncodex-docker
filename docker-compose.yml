@@ -8,7 +8,7 @@ services:
     user: root
     volumes:
       - /mnt/volume_nyc1_01/cantaloupe/data:/imageroot
-      - /mnt/volume_nyc1_01/cantaloupe/cantaloupe.properties:/cantaloupe/cantaloupe.properties
+      - ./cantaloupe/cantaloupe.properties:/cantaloupe/cantaloupe.properties
     environment:
       ENDPOINT_ADMIN_SECRET: "${CANTALOUPE_SECRET}"
   nginx:
