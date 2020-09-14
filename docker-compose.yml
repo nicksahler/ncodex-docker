@@ -10,6 +10,7 @@ services:
     volumes:
       - ${CANTALOUPE_DATA_DIR}:/imageroot
       - ./cantaloupe/cantaloupe.properties:/cantaloupe/cantaloupe.properties
+      - ./cantaloupe/cantaloupe.properties.sample:/cantaloupe/cantaloupe.properties.sample
     environment:
       ENDPOINT_ADMIN_SECRET: "${CANTALOUPE_SECRET}"
   nginx:
