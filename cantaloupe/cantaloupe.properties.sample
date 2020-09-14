@@ -39,7 +39,7 @@ http.accept_queue_limit =
 # Base URI to use for internal links, such as Link headers and JSON-LD
 # @id values, in a reverse-proxy context. This should only be used when
 # X-Forwarded-* headers cannot be used instead. (See the user manual.)
-base_uri =data.ncodex.org
+# base_uri =
 
 # Normally, slashes in a URI path component must be percent-encoded as
 # "%2F". If your proxy is not able to pass these through without decoding,
@@ -504,7 +504,7 @@ cache.server.worker.interval = 86400
 #----------------------------------------
 
 # If this directory does not exist, it will be created automatically.
-FilesystemCache.pathname = /mnt/volume_nyc1_01/cantaloupe/cache
+FilesystemCache.pathname = /var/cache/cantaloupe
 
 # Levels of folder hierarchy in which to store cached images. Deeper depth
 # results in fewer files per directory. Set to 0 to disable subdirectories.
