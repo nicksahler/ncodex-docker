@@ -17,11 +17,14 @@ temp_pathname =
 http.enabled = true
 http.host = 0.0.0.0
 http.port = 8182
+http.http2.enabled = true
 
 # !! Configures the HTTPS server. (Standalone mode only.)
 https.enabled = false
 https.host = 0.0.0.0
 https.port = 8183
+# Secure HTTP/2 requires Java 9 or later.
+https.http2.enabled = false
 
 # !! Available values are `JKS` and `PKCS12`. (Standalone mode only.)
 https.key_store_type = JKS
@@ -29,18 +32,14 @@ https.key_store_password = myPassword
 https.key_store_path = /path/to/keystore.jks
 https.key_password = myPassword
 
-# !! Constrains the size of the web server's thread pool. Leave blank to
-# use the defaults.
-http.min_threads =
-http.max_threads =
-
-# !! Maximum size of the request queue. Leave blank to use the default.
+# !! Maximum size of the HTTP(S) request queue. Leave blank to use the
+# default.
 http.accept_queue_limit =
 
 # Base URI to use for internal links, such as Link headers and JSON-LD
 # @id values, in a reverse-proxy context. This should only be used when
 # X-Forwarded-* headers cannot be used instead. (See the user manual.)
-base_uri =
+base_uri =data.ncodex.org
 
 # Normally, slashes in a URI path component must be percent-encoded as
 # "%2F". If your proxy is not able to pass these through without decoding,
@@ -57,10 +56,6 @@ max_pixels = 100000000
 # Maximum scale to allow (1.0 = full scale; 0 = no maximum).
 max_scale = 1.0
 
-# Character sequence that separates an identifier from a scale constraint
-# in the identifier portion of a URI.
-scale_constraints.delimiter = -
-
 print_stack_trace_on_error_pages = true
 
 ###########################################################################
@@ -76,6 +71,10 @@ delegate_script.enabled = false
 # then the current working directory.
 delegate_script.pathname = delegates.rb
 
+# Enables the invocation cache, which caches method invocations and return
+# values in memory. See the user manual for more information.
+delegate_script.cache.enabled = false
+
 ###########################################################################
 # ENDPOINTS
 ###########################################################################
@@ -86,8 +85,10 @@ endpoint.iiif.1.enabled = false
 # Enables the IIIF Image API 2.x endpoint, at /iiif/2.
 endpoint.iiif.2.enabled = true
 
-# Enables the IIIF Image API 3.x endpoint, at /iiif/3.
-endpoint.iiif.3.enabled = true
+# Controls the response Content-Disposition header for images. Allowed
+# values are `inline`, `attachment`, and `none`. This can be overridden
+# using the ?response-content-disposition query argument.
+endpoint.iiif.content_disposition = inline
 
 # Minimum size that will be used in info.json `sizes` keys.
 endpoint.iiif.min_size = 64
@@ -98,10 +99,10 @@ endpoint.iiif.min_tile_size = 512
 
 # If true, requests for sizes other than those contained in an information
 # response will be denied.
-endpoint.iiif.restrict_to_sizes = false
+endpoint.iiif.2.restrict_to_sizes = false
 
 # Enables the Control Panel, at /admin.
-endpoint.admin.enabled = false
+endpoint.admin.enabled = true
 endpoint.admin.username = admin
 endpoint.admin.secret =
 
@@ -135,7 +136,7 @@ FilesystemSource.lookup_strategy = BasicLookupStrategy
 
 # Server-side path that will be prefixed to the identifier in the URL.
 # Trailing slash is important!
-FilesystemSource.BasicLookupStrategy.path_prefix = /home/myself/images/
+FilesystemSource.BasicLookupStrategy.path_prefix = /imageroot/
 
 # Server-side path or extension that will be suffixed to the identifier in
 # the URL.
@@ -295,29 +296,31 @@ JdbcSource.connection_timeout = 10
 #   on the rest of the keys in this section.
 processor.selection_strategy = AutomaticSelectionStrategy
 
-# Built-in processors are `Java2dProcessor`, TurboJpegProcessor`,
-# `KakaduNativeProcessor`, `OpenJpegProcessor`, `GrokProcessor`,`JaiProcessor`,
+# Built-in processors are `Java2dProcessor`, `GraphicsMagickProcessor`,
+# `ImageMagickProcessor`, `TurboJpegProcessor`, `KakaduNativeProcessor`,
+# `KakaduDemoProcessor`, `OpenJpegProcessor`, `JaiProcessor`,
 # `PdfBoxProcessor`, and `FfmpegProcessor`.
 # Some of these have third-party dependencies and won't work out-of-the-box.
 
 # These format-specific definitions are optional.
 processor.ManualSelectionStrategy.avi = FfmpegProcessor
 processor.ManualSelectionStrategy.bmp =
+processor.ManualSelectionStrategy.dcm = ImageMagickProcessor
 processor.ManualSelectionStrategy.flv = FfmpegProcessor
 processor.ManualSelectionStrategy.gif =
-processor.ManualSelectionStrategy.jp2 = KakaduNativeProcessor
-processor.ManualSelectionStrategy.jpg =
+processor.ManualSelectionStrategy.jp2 = OpenJpegProcessor
+processor.ManualSelectionStrategy.jpg =ImageMagickProcessor
 processor.ManualSelectionStrategy.mov = FfmpegProcessor
 processor.ManualSelectionStrategy.mp4 = FfmpegProcessor
 processor.ManualSelectionStrategy.mpg = FfmpegProcessor
-processor.ManualSelectionStrategy.pdf = PdfBoxProcessor
-processor.ManualSelectionStrategy.png =
-processor.ManualSelectionStrategy.tif =
+processor.ManualSelectionStrategy.pdf = ImageMagickProcessor
+processor.ManualSelectionStrategy.png =JaiProcessor
+processor.ManualSelectionStrategy.tif =ImageMagickProcessor
 processor.ManualSelectionStrategy.webm = FfmpegProcessor
-processor.ManualSelectionStrategy.xpm =
+processor.ManualSelectionStrategy.webp = ImageMagickProcessor
 
 # Fall back to this processor for any formats not assigned above.
-processor.ManualSelectionStrategy.fallback = Java2dProcessor
+processor.ManualSelectionStrategy.fallback = GraphicsMagickProcessor
 
 #----------------------------------------
 # Global Processor Configuration
@@ -331,7 +334,7 @@ processor.ManualSelectionStrategy.fallback = Java2dProcessor
 # * `CacheStrategy` will download it into the source cache using
 #   FilesystemCache, which must also be configured. (This will perform a
 #   lot better than DownloadStrategy if you can spare the disk space.)
-processor.stream_retrieval_strategy = StreamStrategy
+processor.stream_retrieval_strategy = CacheStrategy
 
 # Controls how an incompatible StreamSource + FileProcessor combination is
 # dealt with.
@@ -340,31 +343,39 @@ processor.stream_retrieval_strategy = StreamStrategy
 processor.fallback_retrieval_strategy = DownloadStrategy
 
 # Resolution of vector rasterization (of e.g. PDFs) at a scale of 1.
-processor.dpi = 150
+processor.dpi = 300
 
 # Color of the background when an image is rotated or alpha-flattened, for
 # output formats that don't support transparency.
 # This may not be respected for indexed color derivative images.
-processor.background_color = white
+processor.background_color = black
 
 # Available values are `bell`, `bspline`, `bicubic`, `box`, `hermite`,
 # `lanczos3`, `mitchell`, `triangle`. (JaiProcessor & KakaduNativeProcessor
 # ignore these.)
-processor.downscale_filter = bicubic
-processor.upscale_filter = bicubic
+processor.downscale_filter = bell
+processor.upscale_filter = bell
 
 # Intensity of an unsharp mask from 0 to 1.
 processor.sharpen = 0
+
+# Attempts to copy source image metadata (EXIF, IPTC, XMP) into derivative
+# images. (This is not foolproof; see the user manual.)
+processor.metadata.preserve = false
+
+# Whether to auto-rotate images using the EXIF `Orientation` field.
+# The check for this field can impair performance slightly.
+processor.metadata.respect_orientation = false
 
 # Progressive JPEGs are usually more compact.
 processor.jpg.progressive = true
 
 # JPEG output quality (1-100).
-processor.jpg.quality = 80
+processor.jpg.quality = 85
 
 # TIFF output compression type. Available values are `Deflate`, `JPEG`,
 # `LZW`, and `RLE`. Leave blank for no compression.
-processor.tif.compression = LZW
+processor.tif.compression = Deflate
 
 #----------------------------------------
 # ImageIO Plugin Preferences
@@ -381,7 +392,6 @@ processor.imageio.png.reader =
 processor.imageio.png.writer =
 processor.imageio.tif.reader =
 processor.imageio.tif.writer =
-processor.imageio.xpm.reader =
 
 #----------------------------------------
 # FfmpegProcessor
@@ -392,22 +402,36 @@ processor.imageio.xpm.reader =
 FfmpegProcessor.path_to_binaries =
 
 #----------------------------------------
+# GraphicsMagickProcessor
+#----------------------------------------
+
+# !! Optional absolute path of the directory containing the GraphicsMagick
+# binary. Overrides the PATH.
+GraphicsMagickProcessor.path_to_binaries =
+
+#----------------------------------------
+# ImageMagickProcessor
+#----------------------------------------
+
+# !! Optional absolute path of the directory containing the ImageMagick
+# binary. Overrides the PATH.
+ImageMagickProcessor.path_to_binaries =
+
+#----------------------------------------
+# KakaduDemoProcessor
+#----------------------------------------
+
+# Optional absolute path of the directory containing kdu_expand.
+# Overrides the PATH.
+KakaduDemoProcessor.path_to_binaries =
+
+#----------------------------------------
 # OpenJpegProcessor
 #----------------------------------------
 
 # Optional absolute path of the directory containing opj_decompress.
 # Overrides the PATH.
 OpenJpegProcessor.path_to_binaries =
-
-#----------------------------------------
-# GrokProcessor
-#----------------------------------------
-
-# Optional absolute path of the directory containing grk_decompress.
-# Overrides the PATH.
-GrokProcessor.path_to_binaries =
-
-
 
 ###########################################################################
 # CLIENT-SIDE CACHING
@@ -442,19 +466,19 @@ cache.server.source = FilesystemCache
 cache.server.source.ttl_seconds = 2592000
 
 # Enables the derivative (processed image) cache.
-cache.server.derivative.enabled = false
+cache.server.derivative.enabled = true
 
 # Available values are `FilesystemCache`, `JdbcCache`, `RedisCache`,
 # `HeapCache`, `S3Cache`, and `AzureStorageCache`.
-cache.server.derivative =
+cache.server.derivative =FilesystemCache
 
 # Amount of time derivative cache content remains valid. Set to blank or 0
 # for forever.
-cache.server.derivative.ttl_seconds = 2592000
+cache.server.derivative.ttl_seconds = 0
 
 # Whether to use the Java heap as a "level 1" cache for image infos, either
 # independently or in front of a "level 2" derivative cache (if enabled).
-cache.server.info.enabled = true
+cache.server.info.enabled = false
 
 # If true, when a source reports that the requested source image has gone
 # missing, all cached information relating to it (if any) will be deleted.
@@ -465,11 +489,11 @@ cache.server.purge_missing = false
 # If true, the source image will be confirmed to exist before a cached copy
 # is returned. If false, the cached copy will be returned without checking.
 # Resolving first is safer but slower.
-cache.server.resolve_first = false
+cache.server.resolve_first = true
 
 # !! Enables the cache worker, which periodically purges invalid cache
 # items in the background.
-cache.server.worker.enabled = false
+cache.server.worker.enabled = true
 
 # !! The cache worker will wait this many seconds before starting its
 # next shift.
@@ -480,7 +504,7 @@ cache.server.worker.interval = 86400
 #----------------------------------------
 
 # If this directory does not exist, it will be created automatically.
-FilesystemCache.pathname = /var/cache/cantaloupe
+FilesystemCache.pathname = /mnt/volume_nyc1_01/cantaloupe/cache
 
 # Levels of folder hierarchy in which to store cached images. Deeper depth
 # results in fewer files per directory. Set to 0 to disable subdirectories.
@@ -583,13 +607,13 @@ RedisCache.database = 0
 # OVERLAYS
 ###########################################################################
 
+# Whether to enable overlays.
+overlays.enabled = false
+
 # Controls how overlays are configured. `BasicStrategy` will use the
 # `overlays.BasicStrategy.*` keys in this section. `ScriptStrategy` will
 # use a delegate method. (See the user manual.)
 overlays.strategy = BasicStrategy
-
-# Whether to enable overlays using the BasicStrategy.
-overlays.BasicStrategy.enabled = false
 
 # `image` or `string`.
 overlays.BasicStrategy.type = image
@@ -598,9 +622,9 @@ overlays.BasicStrategy.type = image
 overlays.BasicStrategy.image = /path/to/overlay.png
 
 # Overlay text.
-overlays.BasicStrategy.string = Copyright © My Great Organization\nAll rights reserved.
+overlays.BasicStrategy.string = Copyright \u00A9️ Ncodex\nAll rights reserved.
 
-# For a list of possible values, launch with the -list-fonts argument.
+# For possible values, launch with the -Dcantaloupe.list_fonts option.
 overlays.BasicStrategy.string.font = Helvetica
 
 # Font size in points.
@@ -632,7 +656,7 @@ overlays.BasicStrategy.string.background.color = rgba(0, 0, 0, 100)
 
 # Allowed values: `top left`, `top center`, `top right`, `left center`,
 # `center`, `right center`, `bottom left`, `bottom center`, `bottom right`,
-# `repeat` (images only), `scaled` (images only).
+# `repeat` (images only).
 overlays.BasicStrategy.position = bottom right
 
 # Pixel margin between the overlay and the image edge. Does not apply to
@@ -648,6 +672,13 @@ overlays.BasicStrategy.output_width_threshold = 400
 overlays.BasicStrategy.output_height_threshold = 300
 
 ###########################################################################
+# REDACTIONS
+###########################################################################
+
+# See the user manual for information about how redactions work.
+redaction.enabled = false
+
+###########################################################################
 # LOGGING
 ###########################################################################
 
@@ -659,15 +690,12 @@ overlays.BasicStrategy.output_height_threshold = 300
 log.application.level = debug
 
 log.application.ConsoleAppender.enabled = true
-log.application.ConsoleAppender.logstash.enabled = false
 
 # N.B.: Don't enable FileAppender and RollingFileAppender simultaneously!
 log.application.FileAppender.enabled = false
-log.application.FileAppender.logstash.enabled = false
 log.application.FileAppender.pathname = /path/to/logs/application.log
 
 log.application.RollingFileAppender.enabled = false
-log.application.RollingFileAppender.logstash.enabled = false
 log.application.RollingFileAppender.pathname = /path/to/logs/application.log
 log.application.RollingFileAppender.policy = TimeBasedRollingPolicy
 log.application.RollingFileAppender.TimeBasedRollingPolicy.filename_pattern = /path/to/logs/application-%d{yyyy-MM-dd}.log
@@ -689,11 +717,9 @@ log.application.SyslogAppender.facility = LOCAL0
 
 # N.B.: Don't enable FileAppender and RollingFileAppender simultaneously!
 log.error.FileAppender.enabled = false
-log.error.FileAppender.logstash.enabled = false
 log.error.FileAppender.pathname = /path/to/logs/error.log
 
 log.error.RollingFileAppender.enabled = false
-log.error.RollingFileAppender.logstash.enabled = false
 log.error.RollingFileAppender.pathname = /path/to/logs/error.log
 log.error.RollingFileAppender.policy = TimeBasedRollingPolicy
 log.error.RollingFileAppender.TimeBasedRollingPolicy.filename_pattern = /path/to/logs/error-%d{yyyy-MM-dd}.log
